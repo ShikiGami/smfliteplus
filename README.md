@@ -1,7 +1,7 @@
-smflite
-=======
+smflite+
+========
 
-**smflite** is a minimal class library for handling standard MIDI files (SMF)
+**smflite+** is a minimal class library for handling standard MIDI files (SMF)
 on Unity.
 
 What it is used for
@@ -59,11 +59,12 @@ void Update() {
 Run it until the `Playing` property becomes false.
 
 You can find a sample project in the [test branch]
-(https://github.com/keijiro/smflite/tree/test) of this repository.
+(https://github.com/ShikiGami/smfliteplus/tree/test) of this repository.
 
 License
 -------
 
+Copyright (C) 2015 Shiki Byakko
 Copyright (C) 2013 Keijiro Takahashi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
