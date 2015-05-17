@@ -10,7 +10,7 @@ public class Indicator : MonoBehaviour
         transform.localScale = Vector3.one * scale;
     }
 
-    void OnNoteOn ()
+    public void OnNoteOn ()
     {
         scale = 3.0f;
     }

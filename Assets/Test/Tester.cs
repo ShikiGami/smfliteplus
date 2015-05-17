@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using SmfLite;
+using SmfLitePlus;
 
 public class Tester : MonoBehaviour
 {
@@ -32,8 +32,8 @@ public class Tester : MonoBehaviour
     void ResetAndPlay (float startTime)
     {
         // Play the audio clip.
-        audio.Play ();
-        audio.time = startTime;
+        GetComponent<AudioSource>().Play ();
+        GetComponent<AudioSource>().time = startTime;
 
         // Start the sequencer and dispatch events at the beginning of the track.
         sequencer = new MidiTrackSequencer (song.tracks [0], song.division, bpm);
@@ -54,15 +54,16 @@ public class Tester : MonoBehaviour
     {
         if (events != null) {
             foreach (var e in events) {
-                if ((e.status & 0xf0) == 0x90) {
+                if (e.statusType == StatusType.NOTE_ON)
+                {
                     if (e.data1 == 0x24) {
-                        GameObject.Find ("Kick").SendMessage ("OnNoteOn");
+                        GameObject.Find("Kick").GetComponent<Indicator>().OnNoteOn();
                     } else if (e.data1 == 0x2a) {
-                        GameObject.Find ("Hat").SendMessage ("OnNoteOn");
+                        GameObject.Find("Hat").GetComponent<Indicator>().OnNoteOn();
                     } else if (e.data1 == 0x2e) {
-                        GameObject.Find ("OHat").SendMessage ("OnNoteOn");
+                        GameObject.Find("OHat").GetComponent<Indicator>().OnNoteOn();
                     } else if (e.data1 == 0x26 || e.data1 == 0x27 || e.data1 == 0x28) {
-                        GameObject.Find ("Snare").SendMessage ("OnNoteOn");
+                        GameObject.Find("Snare").GetComponent<Indicator>().OnNoteOn();
                     }
                 }
             }

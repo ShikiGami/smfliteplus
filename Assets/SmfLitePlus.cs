@@ -1,6 +1,7 @@
 //
-// SmfLite.cs - A minimal toolkit for handling standard MIDI files (SMF) on Unity
+// SmfLitePlus.cs - A minimal toolkit for handling standard MIDI files (SMF) on Unity
 //
+// Copyright (C) 2015 Shiki Byakko
 // Copyright (C) 2013 Keijiro Takahashi
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,19 +23,66 @@
 //
 using System.Collections.Generic;
 
-namespace SmfLite
+namespace SmfLitePlus
 {
     // An alias for internal use.
-    using DeltaEventPairList = System.Collections.Generic.List<SmfLite.MidiTrack.DeltaEventPair>;
+    using DeltaEventPairList = System.Collections.Generic.List<SmfLitePlus.MidiTrack.DeltaEventPair>;
 
-    //
-    // MIDI event
-    //
+    /// <summary>
+    /// Type of MIDI event from the status byte
+    /// </summary>
+    public enum StatusType : byte
+    {
+        NOTE_OFF = 0x80,
+        NOTE_ON = 0x90,
+        POLYPHONIC_AFTERTOUCH = 0xa0,
+        CONTROL_MODE_CHANGE = 0xb0,
+        PROGRAM_CHANGE = 0xc0,
+        CHANNEL_AFTERTOUCH = 0xd0,
+        PITCH_WHEEL_RANGE = 0xe0,
+    }
+
+    /// <summary>
+    /// Number of channel from the status byte
+    /// </summary>
+    public enum Channel : byte
+    {
+        CHANNEL_1 = 0x00,
+        CHANNEL_2 = 0x01,
+        CHANNEL_3 = 0x02,
+        CHANNEL_4 = 0x03,
+        CHANNEL_5 = 0x04,
+        CHANNEL_6 = 0x05,
+        CHANNEL_7 = 0x06,
+        CHANNEL_8 = 0x07,
+        CHANNEL_9 = 0x08,
+        CHANNEL_10 = 0x09,
+        CHANNEL_11 = 0x0a,
+        CHANNEL_12 = 0x0b,
+        CHANNEL_13 = 0x0c,
+        CHANNEL_14 = 0x0d,
+        CHANNEL_15 = 0x0e,
+        CHANNEL_16 = 0x0f,
+    }
+
+    /// <summary>
+    /// MIDI event
+    /// </summary>
     public struct MidiEvent
     {
         #region Public members
 
-        public byte status;
+        private byte status;
+        public StatusType statusType
+        {
+            get { return (StatusType)(status & 0xF0); }
+        }
+
+        public Channel channel
+        {
+            get { return (Channel)(status & 0x0F); }
+        }
+
         public byte data1;
         public byte data2;
 
@@ -47,22 +95,24 @@ namespace SmfLite
         
         public override string ToString ()
         {
-            return "[" + status.ToString ("X") + "," + data1 + "," + data2 + "]";
+            return "[" + channel.ToString() + "_" + statusType.ToString() + "," + data1 + "," + data2 + "]";
         }
 
         #endregion
     }
 
-    //
-    // MIDI track
-    //
-    // Stores only one track (usually a MIDI file contains one or more tracks).
-    //
+    /// <summary>
+    /// MIDI track
+    /// 
+    /// Stores only one track (usually a MIDI file contains one or more tracks).
+    /// </summary>
     public class MidiTrack
     {
         #region Internal data structure
 
-        // Data pair storing a delta-time value and an event.
+        /// <summary>
+        /// Data pair storing a delta-time value and an event.
+        /// </summary>
         public struct DeltaEventPair
         {
             public int delta;
@@ -89,7 +139,9 @@ namespace SmfLite
             sequence = new List<DeltaEventPair> ();
         }
 
-        // Returns an enumerator which enumerates the all delta-event pairs.
+        /// <summary>
+        /// Returns an enumerator which enumerates the all delta-event pairs.
+        /// </summary>
         public List<DeltaEventPair>.Enumerator GetEnumerator ()
         {
             return sequence.GetEnumerator ();
@@ -122,17 +174,21 @@ namespace SmfLite
         #endregion
     }
     
-    //
-    // MIDI file container
-    //
+    /// <summary>
+    /// MIDI file container
+    /// </summary>
     public struct MidiFileContainer
     {
         #region Public members
 
-        // Division number == PPQN for this song.
+        /// <summary>
+        /// Division number == PPQN for this song.
+        /// </summary>
         public int division;
 
-        // Track list contained in this file.
+        /// <summary>
+        /// Track list contained in this file.
+        /// </summary>
         public List<MidiTrack> tracks;
         
         public MidiFileContainer (int division, List<MidiTrack> tracks)
@@ -153,12 +209,12 @@ namespace SmfLite
         #endregion
     }
 
-    //
-    // Sequencer for MIDI tracks
-    //
-    // Works like an enumerator for MIDI events.
-    // Note that not only Advance() but also Start() can return MIDI events.
-    //
+    /// <summary>
+    /// Sequencer for MIDI tracks
+    ///
+    /// Works like an enumerator for MIDI events.
+    /// Note that not only Advance() but also Start() can return MIDI events.
+    /// </summary>
     public class MidiTrackSequencer
     {
         #region Public members
@@ -167,17 +223,23 @@ namespace SmfLite
             get { return playing; }
         }
 
-        // Constructor
-        //   "ppqn" stands for Pulse Per Quater Note,
-        //   which is usually provided with a MIDI header.
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="track">MidiTrack to sequence.</param>
+        /// <param name="ppqn">"ppqn" stands for Pulse Per Quater Note, which is usually provided with a MIDI header.</param>
+        /// <param name="bpm">Sequencer BPM.</param>
         public MidiTrackSequencer (MidiTrack track, int ppqn, float bpm)
         {
             pulsePerSecond = bpm / 60.0f * ppqn;
             enumerator = track.GetEnumerator ();
         }
 
-        // Start the sequence.
-        // Returns a list of events at the beginning of the track.
+        /// <summary>
+        /// Start the sequence.
+        /// </summary>
+        /// <param name="startTime">Sequencer start time</param>
+        /// <returns>List of events at the beginning of the track.</returns>
         public List<MidiEvent> Start (float startTime = 0.0f)
         {
             if (enumerator.MoveNext ()) {
@@ -190,8 +252,11 @@ namespace SmfLite
             }
         }
 
-        // Advance the song position.
-        // Returns a list of events between the current position and the next one.
+        /// <summary>
+        /// Advance the song position.
+        /// </summary>
+        /// <param name="deltaTime">Time to advance.</param>
+        /// <returns>Returns a list of events between the current position and the next one.</returns>
         public List<MidiEvent> Advance (float deltaTime)
         {
             if (!playing) {
@@ -234,11 +299,11 @@ namespace SmfLite
         #endregion
     }
 
-    //
-    // MIDI file loader
-    //
-    // Loads an SMF and returns a file container object.
-    //
+    /// <summary>
+    /// MIDI file loader
+    ///
+    /// Loads an SMF and returns a file container object.
+    /// </summary>
     public static class MidiFileLoader
     {
         #region Public members
@@ -328,9 +393,9 @@ namespace SmfLite
         #endregion
     }
 
-    //
-    // Binary data stream reader (for internal use)
-    //
+    /// <summary>
+    /// Binary data stream reader (for internal use)
+    /// </summary>
     class MidiDataStreamReader
     {
         byte[] data;
