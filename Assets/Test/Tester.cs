@@ -54,7 +54,7 @@ public class Tester : MonoBehaviour
     {
         if (events != null) {
             foreach (var e in events) {
-                if (e.statusType == StatusType.NOTE_ON)
+                if (e.statusType == MidiEvent.StatusType.NOTE_ON)
                 {
                     if (e.data1 == 0x24) {
                         GameObject.Find("Kick").GetComponent<Indicator>().OnNoteOn();

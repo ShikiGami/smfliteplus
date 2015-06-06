@@ -29,50 +29,49 @@ namespace SmfLitePlus
     using DeltaEventPairList = System.Collections.Generic.List<SmfLitePlus.MidiTrack.DeltaEventPair>;
 
     /// <summary>
-    /// Type of MIDI event from the status byte
-    /// </summary>
-    public enum StatusType : byte
-    {
-        NOTE_OFF = 0x80,
-        NOTE_ON = 0x90,
-        POLYPHONIC_AFTERTOUCH = 0xa0,
-        CONTROL_MODE_CHANGE = 0xb0,
-        PROGRAM_CHANGE = 0xc0,
-        CHANNEL_AFTERTOUCH = 0xd0,
-        PITCH_WHEEL_RANGE = 0xe0,
-    }
-
-    /// <summary>
-    /// Number of channel from the status byte
-    /// </summary>
-    public enum Channel : byte
-    {
-        CHANNEL_1 = 0x00,
-        CHANNEL_2 = 0x01,
-        CHANNEL_3 = 0x02,
-        CHANNEL_4 = 0x03,
-        CHANNEL_5 = 0x04,
-        CHANNEL_6 = 0x05,
-        CHANNEL_7 = 0x06,
-        CHANNEL_8 = 0x07,
-        CHANNEL_9 = 0x08,
-        CHANNEL_10 = 0x09,
-        CHANNEL_11 = 0x0a,
-        CHANNEL_12 = 0x0b,
-        CHANNEL_13 = 0x0c,
-        CHANNEL_14 = 0x0d,
-        CHANNEL_15 = 0x0e,
-        CHANNEL_16 = 0x0f,
-    }
-
-    /// <summary>
     /// MIDI event
     /// </summary>
     public struct MidiEvent
     {
         #region Public members
 
-        private byte status;
+        /// <summary>
+        /// Type of MIDI event from the status byte
+        /// </summary>
+        public enum StatusType : byte
+        {
+            NOTE_OFF = 0x80,
+            NOTE_ON = 0x90,
+            POLYPHONIC_AFTERTOUCH = 0xa0,
+            CONTROL_MODE_CHANGE = 0xb0,
+            PROGRAM_CHANGE = 0xc0,
+            CHANNEL_AFTERTOUCH = 0xd0,
+            PITCH_WHEEL_RANGE = 0xe0,
+        }
+
+        /// <summary>
+        /// Number of channel from the status byte
+        /// </summary>
+        public enum Channel : byte
+        {
+            CHANNEL_1 = 0x00,
+            CHANNEL_2 = 0x01,
+            CHANNEL_3 = 0x02,
+            CHANNEL_4 = 0x03,
+            CHANNEL_5 = 0x04,
+            CHANNEL_6 = 0x05,
+            CHANNEL_7 = 0x06,
+            CHANNEL_8 = 0x07,
+            CHANNEL_9 = 0x08,
+            CHANNEL_10 = 0x09,
+            CHANNEL_11 = 0x0a,
+            CHANNEL_12 = 0x0b,
+            CHANNEL_13 = 0x0c,
+            CHANNEL_14 = 0x0d,
+            CHANNEL_15 = 0x0e,
+            CHANNEL_16 = 0x0f,
+        }
+
         public StatusType statusType
         {
             get { return (StatusType)(status & 0xF0); }
@@ -83,7 +82,21 @@ namespace SmfLitePlus
             get { return (Channel)(status & 0x0F); }
         }
 
+        /// <summary>
+        /// Note Number (NOTE_OFF/NOTE_ON/POLYPHONIC_AFTERTOUCH)
+        /// Control Function (CONTROL_MODE_CHANGE)
+        /// Program # (PROGRAM_CHANGE)
+        /// Aftertouch pressure (CHANNEL_AFTERTOUCH)
+        /// Pitch wheel LSB (PITCH_WHEEL_RANGE)
+        /// </summary>
         public byte data1;
+
+        /// <summary>
+        /// Note Velocity (NOTE_OFF/NOTE_ON)
+        /// Aftertouch pressure (POLYPHONIC_AFTERTOUCH)
+        /// MSB/LSB/ON/OFF (CONTROL_MODE_CHANGE)
+        /// Pitch wheel MSB (PITCH_WHEEL_RANGE)
+        /// </summary>
         public byte data2;
 
         public MidiEvent (byte status, byte data1, byte data2)
@@ -97,6 +110,67 @@ namespace SmfLitePlus
         {
             return "[" + channel.ToString() + "_" + statusType.ToString() + "," + data1 + "," + data2 + "]";
         }
+
+        #endregion
+
+        #region Private members
+
+        byte status;
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Meta event
+    /// </summary>
+    public struct MetaEvent
+    {
+        #region Public members
+
+        /// <summary>
+        /// Type of Meta event
+        /// </summary>
+        public enum Type : byte
+        {
+            SEQUENCE_NUMBER = 0x00,
+            TEXT_EVENT = 0x01,
+            COPYRIGHT_NOTICE = 0x02,
+            TRACK_NAME = 0x03,
+            INSTRUMENT_NAME = 0x04,
+            LYRIC = 0x05,
+            MARKER = 0x06,
+            CUE_POINT = 0x07,
+            MIDI_CHANNEL_PREFIX = 0x20,
+            END_OF_TRACK = 0x27,
+            SET_TEMPO = 0x51,
+            SMTPE_OFFSET = 0x54,
+            TIME_SIGNATURE = 0x58,
+            KEY_SIGNATURE = 0x59,
+        }
+
+        public Type type
+        {
+            get { return (Type)(typeByte); }
+        }
+
+        public byte[] data;
+
+        public MetaEvent (byte type, byte[] data)
+        {
+            this.typeByte = type;
+            this.data = data;
+        }
+        
+        public override string ToString ()
+        {
+            return "[" + typeByte.ToString() + "_" + data + "]";
+        }
+
+        #endregion
+
+        #region Private members
+
+        byte typeByte;
 
         #endregion
     }
@@ -116,12 +190,21 @@ namespace SmfLitePlus
         public struct DeltaEventPair
         {
             public int delta;
-            public MidiEvent midiEvent;
+            public MidiEvent? midiEvent;
+            public MetaEvent? metaEvent;
             
             public DeltaEventPair (int delta, MidiEvent midiEvent)
             {
                 this.delta = delta;
                 this.midiEvent = midiEvent;
+                this.metaEvent = null;
+            }
+
+            public DeltaEventPair(int delta, MetaEvent metaEvent)
+            {
+                this.delta = delta;
+                this.midiEvent = null;
+                this.metaEvent = metaEvent;
             }
             
             public override string ToString ()
@@ -169,6 +252,11 @@ namespace SmfLitePlus
         public void AddEvent (int delta, MidiEvent midiEvent)
         {
             sequence.Add (new DeltaEventPair (delta, midiEvent));
+        }
+
+        public void AddEvent(int delta, MetaEvent metaEvent)
+        {
+            sequence.Add(new DeltaEventPair(delta, metaEvent));
         }
 
         #endregion
@@ -223,15 +311,26 @@ namespace SmfLitePlus
             get { return playing; }
         }
 
+        public float BPM
+        {
+            get { return BPM; }
+            set 
+            { 
+                bpm = value;
+                pulsePerSecond = bpm / 60.0f * pulsePerQuarterNote;
+            }
+        }
+
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="track">MidiTrack to sequence.</param>
         /// <param name="ppqn">"ppqn" stands for Pulse Per Quater Note, which is usually provided with a MIDI header.</param>
         /// <param name="bpm">Sequencer BPM.</param>
-        public MidiTrackSequencer (MidiTrack track, int ppqn, float bpm)
+        public MidiTrackSequencer (MidiTrack track, int ppqn, float bpm = 120)
         {
-            pulsePerSecond = bpm / 60.0f * ppqn;
+            pulsePerQuarterNote = ppqn;
+            BPM = bpm;
             enumerator = track.GetEnumerator ();
         }
 
@@ -273,7 +372,16 @@ namespace SmfLitePlus
             
             while (pulseCounter >= pulseToNext) {
                 var pair = enumerator.Current;
-                messages.Add (pair.midiEvent);
+                if (pair.midiEvent.HasValue)
+                    messages.Add (pair.midiEvent.Value);
+                else if (pair.metaEvent.HasValue) {
+                    /// Change the BPM of the song by using the Tempo Meta event
+                    if(pair.metaEvent.Value.type == MetaEvent.Type.SET_TEMPO) {
+                        byte[] data = pair.metaEvent.Value.data;
+                        int tempo = data[2] + (data[1] << 8) + (data[0] << 16);
+                        BPM = 60000000 / tempo;
+                    }
+                }
                 if (!enumerator.MoveNext ()) {
                     playing = false;
                     break;
@@ -292,6 +400,8 @@ namespace SmfLitePlus
 
         DeltaEventPairList.Enumerator enumerator;
         bool playing;
+        float bpm;
+        float pulsePerQuarterNote;
         float pulsePerSecond;
         float pulseToNext;
         float pulseCounter;
@@ -372,9 +482,12 @@ namespace SmfLitePlus
                 }
                 
                 if (ev == 0xff) {
-                    // 0xff: Meta event (unused).
-                    reader.Advance (1);
-                    reader.Advance (reader.ReadMultiByteValue ());
+                    // 0xff: Meta event
+                    byte type = reader.ReadByte();
+                    byte length = reader.ReadByte();
+                    byte[] data = reader.ReadBytes(length);
+                    track.AddEvent(delta, new MetaEvent(type, data));
+                    //reader.Advance (reader.ReadMultiByteValue ());
                 } else if (ev == 0xf0) {
                     // 0xf0: SysEx (unused).
                     while (reader.ReadByte() != 0xf7) {
@@ -398,8 +511,8 @@ namespace SmfLitePlus
     /// </summary>
     class MidiDataStreamReader
     {
-        byte[] data;
-        int offset;
+        private byte[] data;
+        private int offset;
 
         public int Offset {
             get { return offset; }
@@ -423,6 +536,16 @@ namespace SmfLitePlus
         public byte ReadByte ()
         {
             return data [offset++];
+        }
+
+        public byte[] ReadBytes(int length)
+        {
+            var temp = new byte[length];
+            for (var i = 0; i < length; i++)
+            {
+                temp[i] = ReadByte();
+            }
+            return temp;
         }
 
         public char[] ReadChars (int length)
