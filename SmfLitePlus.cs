@@ -2,7 +2,7 @@
 // SmfLitePlus.cs - A minimal toolkit for handling standard MIDI files (SMF) on Unity
 //
 // Copyright (C) 2015 Shiki Byakko
-// Copyright (C) 2013 Keijiro Takahashi
+// Copyright (C) 2013 Keijiro Takahashi (The original SmfLite)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
@@ -209,7 +209,8 @@ namespace SmfLitePlus
             
             public override string ToString ()
             {
-                return "(" + delta + ":" + midiEvent + ")";
+                if (midiEvent.HasValue) return "(" + delta + ":" + midiEvent.Value + ")";
+                else return "(" + delta + ":" + metaEvent.Value + ")";
             }
         }
 
@@ -313,12 +314,18 @@ namespace SmfLitePlus
 
         public float BPM
         {
-            get { return BPM; }
+            get { return bpm; }
             set 
             { 
                 bpm = value;
                 pulsePerSecond = bpm / 60.0f * pulsePerQuarterNote;
             }
+        }
+
+        public MidiEvent.Channel Channel
+        {
+            get { return channel; }
+            set { channel = value; }
         }
 
         /// <summary>
@@ -372,8 +379,11 @@ namespace SmfLitePlus
             
             while (pulseCounter >= pulseToNext) {
                 var pair = enumerator.Current;
-                if (pair.midiEvent.HasValue)
+                if (pair.midiEvent.HasValue) {
+                    if (channel != pair.midiEvent.Value.channel)
+                        channel = pair.midiEvent.Value.channel;
                     messages.Add (pair.midiEvent.Value);
+                }
                 else if (pair.metaEvent.HasValue) {
                     /// Change the BPM of the song by using the Tempo Meta event
                     if(pair.metaEvent.Value.type == MetaEvent.Type.SET_TEMPO) {
@@ -401,6 +411,7 @@ namespace SmfLitePlus
         DeltaEventPairList.Enumerator enumerator;
         bool playing;
         float bpm;
+        MidiEvent.Channel channel;
         float pulsePerQuarterNote;
         float pulsePerSecond;
         float pulseToNext;
@@ -487,7 +498,6 @@ namespace SmfLitePlus
                     byte length = reader.ReadByte();
                     byte[] data = reader.ReadBytes(length);
                     track.AddEvent(delta, new MetaEvent(type, data));
-                    //reader.Advance (reader.ReadMultiByteValue ());
                 } else if (ev == 0xf0) {
                     // 0xf0: SysEx (unused).
                     while (reader.ReadByte() != 0xf7) {
